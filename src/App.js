@@ -5,6 +5,11 @@ import abi from "./utils/BuildSpace.json";
 
 export default function App() {
 
+  const handOptions =  {
+    rock:0,
+    paper: 1,
+    scissors: 2
+  }
   const [currAccount, setCurrentAccount] = React.useState("")
 
   console.log(currAccount)
@@ -18,6 +23,7 @@ export default function App() {
       return
     } else {
       console.log("We have ethereum", ethereum)
+      getAllThrows()
     }
 
      //check if authorized to access wallet
@@ -54,7 +60,7 @@ export default function App() {
     .catch(err => console.log(err));
   }
   
-  const contractAddress = "0xAb7d412f2367a0A3136C83a5810B2e6864b85ca4";
+  const contractAddress = "0xB4C1036A7a73875a05D21c88B1c8EBcb7b9e10c2";
   const contractABI = abi.abi
   console.log("contractAddress:", contractAddress)
   console.log("contractABI", contractABI)
@@ -76,7 +82,7 @@ export default function App() {
 
     console.log("Retrieved total waves:", count.toNumber())
 
-    const waveTxn = await buildSpaceContract.wave("rock")
+    const waveTxn = await buildSpaceContract.wave(handOptions.rock)
     console.log("Mining...", waveTxn.hash)
 
     await waveTxn.wait()
@@ -90,6 +96,50 @@ export default function App() {
   // pass a rock, paper, scissors value
   const throwHand = async (hand : any)  => {
       console.log("hand: ", hand)
+
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      console.log("provider:", provider)
+
+      const signer = provider.getSigner()
+      console.log("signer:", signer)
+
+      const buildSpaceContract = new ethers.Contract(contractAddress, contractABI, signer)
+      console.log("buildSpaceContract:", buildSpaceContract)
+
+      const throwTxn = await buildSpaceContract.throwHand(0, "some message")
+      console.log("Mining...", throwTxn.hash)
+
+      await throwTxn.wait()
+      console.log("Mined --", throwTxn.hash)
+
+  }
+
+  const [allThrows, setAllThrows] = React.useState([]) //https://www.geeksforgeeks.org/what-is-usestate-in-react/
+
+  async function getAllThrows() {
+    console.log("running getAllThrows")
+
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    console.log("provider:", provider)
+
+    const signer = provider.getSigner()
+    console.log("signer:", signer)
+
+    const buildSpaceContract = new ethers.Contract(contractAddress, contractABI, signer)
+    console.log("buildSpaceContract:", buildSpaceContract)
+
+    let throws = await buildSpaceContract.getAllThrows()
+
+    let throwsCleaned = []
+    throws.forEach(handThrow => {
+      throwsCleaned.push({
+        address: handThrow.address,
+        timestamp: new Date(handThrow.timestamp * 1000),
+        message: handThrow.message 
+      })
+    })
+
+    setAllThrows(throwsCleaned)
   }
   
   // check if function is used upon page load
@@ -113,18 +163,19 @@ export default function App() {
           Wave at Me
         </button>
 
-        <button className="waveButton" onClick={() => throwHand('rock')}>
+        <button className="waveButton" onClick={() => throwHand(handOptions.rock)}>
           Rock <span role="img" aria-label="metamask">🪨</span>
         </button>
 
-        <button className="waveButton" onClick={() => throwHand('paper')}>
+        <button className="waveButton" onClick={() => throwHand(handOptions.paper)}>
           Paper <span role="img" aria-label="metamask">📃</span>
         </button>
 
-        <button className="waveButton" onClick={() => throwHand('scissors')}>
+        <button className="waveButton" onClick={() => throwHand(handOptions.scissors)}>
           Scissors <span role="img" aria-label="metamask">✂️</span>
         </button>
 
+        {console.log("currAccount:", currAccount)}
 
         {currAccount ? null : (
           <button className="waveButton" onClick={connectWallet}>  
@@ -132,6 +183,15 @@ export default function App() {
           </button>
         )}
 
+        {allThrows.map((handThrow, index) => {
+          return (
+            <div style = {{backgroundColor: "OldLace", marginTop: "16px", padding: "8px"}}>
+              <div>Address: {handThrow.address}</div>
+              <div>Time: {handThrow.timestamp.toString()}</div>
+              <div>Message: {handThrow.message}</div>
+            </div>
+          )
+        })}
        
       </div>
     </div>
